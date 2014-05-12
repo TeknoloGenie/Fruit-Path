@@ -1,530 +1,381 @@
-<!DOCTYPE html><!--HTML5 doctype-->
+<!DOCTYPE HTML>
 <html>
 <head>
-	<title>FruitPath</title>
-    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="stylesheet" type="text/css" href="css/leaflet.css" />
-    <link rel="stylesheet" type="text/css" href="build/css/af.ui.css"  />
-    <link rel="stylesheet" type="text/css" href="css/fruitpath.css" />
-    <link rel="stylesheet" type="text/css" href="css/elusive-webfont.css" />
-    <link rel="stylesheet" type="text/css" href="css/leaflet-routing-machine.css" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="author" content="Benaissa Ghrib" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
-    
-    <script src="intelxdk.js"></script>
-    <script src="xhr.js"></script>  
-    <script src="cordova.js"></script>  
-    <script type="text/javascript" charset="utf-8" src="build/ui/appframework.ui.min.js"></script> 
-    <script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>
-    <script type="text/javascript" charset="utf-8" src="scripts/leaflet.ajax.js"></script>
-    <script type="text/javascript" charset="utf-8" src="scripts/leaflet-routing-machine.js"></script>
+<title>Fruit Path : Your path to fruit</title>
+<meta name="description" content="Fruit Path is an iPhone app that helps you find local farmers markets, fruit stands and strawberry stands." />
+<meta name="keywords" content="local, farmer, market, fruit, stand, strawberry, iphone, app, fruit, path, map, find, fruit map, " />
+<meta name="author" content="Aaron Cook">
+<meta name="robots" content="index, follow">
+<meta name="revisit-after" content="30 days">
+
+<!-- fruit, path, stand -->
+
+
+<!--Stylesheet-->
+
+<!--[if IE 7]>
+<link rel="stylesheet" href="css/fontello-ie7.css"><![endif]-->
+
+
+<link href="websitecss/font.css" rel="stylesheet" type="text/css">
+<link href="websitecss/fontello.css" rel="stylesheet" type="text/css">
+<link href="websitecss/base.css" rel="stylesheet" type="text/css">
+<link href="websitecss/skeleton.css" rel="stylesheet" type="text/css">
+<link href="websitecss/main.css" rel="stylesheet" type="text/css">
+<link href="websitecss/owl.carousel.css" rel="stylesheet">
+<link href="websitecss/owl.theme.css" rel="stylesheet">
+<link href="websitecss/magnific-popup.css" rel="stylesheet"  />
+<link href="websitecss/flexslider.css" rel="stylesheet" />
+<link rel="icon" href="favicon.ico" type="image/x-icon" />
+
+
+
+<!--[if lt IE 9]>
+<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+<![endif]-->
+
+<!-- Quantcast Tag -->
 <script type="text/javascript">
-    
-    $.ui.autoLaunch = true;
-    $.ui.useOSThemes = false;
-    $.ui.showBackButton = false;
-    $.ui.animateHeaders = false;
-    $.ui.disableSideMenu();
-    $.ui.disableSplitView();
+var _qevents = _qevents || [];
 
-    var loc = {'lat': 37.09024, 'lon': -95.712891};
-    var myPosition;
-    var markerLoc;
-    var menuState = false;
-    var fruitsModalState = false;
-    var dirModalState = false;
-    var searchState = false;
-    var countID = 0;
-    var deviceWidth = 0;
-    var deviceHeight = 0;
-    var map;
-    var fruitsArray = [];
-    var markers = [];
+(function() {
+var elem = document.createElement('script');
+elem.src = (document.location.protocol == "https:" ? "https://secure" : "http://edge") + ".quantserve.com/quant.js";
+elem.async = true;
+elem.type = "text/javascript";
+var scpt = document.getElementsByTagName('script')[0];
+scpt.parentNode.insertBefore(elem, scpt);
+})();
 
-    function onDeviceReady() {
-        intel.xdk.device.hideSplashScreen();
-        setupMap();
-        intel.xdk.geolocation.getCurrentPosition(sucAS,failAS);
-        
-        deviceWidth = $('#afui').width();
-        deviceHeight = $('#afui').height();
-        $("#submitVendor").submit(function(e){
-            e.preventDefault();
-            submitRegister();
-        });
-        $("#header").on("click",function() {
-            console.log("tapped header");
-        });
-
-
-
-    }
-    function openDirectionsModal(endLocLat, endLocLon) {
-        var endLoc = new L.latLng(endLocLat, endLocLon);
-        $(".menuBtn").hide();
-        $.ui.showModal('#directionsModal','pop');
-        $("#map").addClass("blur");
-        dirModalState = true;
-        if (line) {
-            map.removeLayer(line);
-        }
-        L.Routing.control({
-            waypoints: [
-                myPosition,
-                endLoc
-            ]
-        }).addTo(map);
-    }
-    
-    function makePhoneCall(number) {
-        
-        intel.xdk.device.launchExternal("tel:"+number+"");
-    }
-    
-    function openNativeMap(latX, lonY) {
-        var url = "http://maps.apple.com/?saddr=" + loc.lat +"," + loc.lon + "&?daddr=" + latX +"," + lonY;
-        if (intel.xdk.device.platform.toLowerCase == "android") {
-            // We are in android            
-            url = "geo:"  + latX +"," + lonY;            
-        } 
- 
-        
-       intel.xdk.device.launchExternal(url);
-    }
-
-    function openFruitsModal() {
-        $(".menuBtn").hide();
-        $.ui.showModal('#vendorsFruits','pop');
-        $("#map").addClass("blur");
-        $("#fruit-list").empty();
-        $.each(fruitsArray, function (i, val) {
-            var li = $('<li/>').text(val).appendTo("#fruit-list");
-        });
-                fruitsModalState = true;
-    }
-
-    function goBack() {
-        $.ui.goBack();
-        $.ui.hideModal("");
-        clearMap();
-    }
-    function hideModals() {
-        $.ui.hideModal("");
-        $(".menuBtn").show();
-        $("#map").removeClass("blur");
-        clearMap();
-    }
-
-
-    function toggleMenu() {
-
-        if (menuState) {
-            $.ui.hideModal("");
-            menuState = false;
-            $("#map").removeClass("blur");
-            $(".menuBtn").css({"color": "#fff"});
-        } else {
-            $.ui.showModal('#dropDownMenu','down');
-            menuState = true;
-            $("#map").addClass("blur");
-            $(".menuBtn").css({"color": "#ddd"});
-        }
-    }
-
-    function toggleSearch() {
-        if (menuState) {
-            $.ui.hideModal("");
-            menuState = false;
-            $("#map").removeClass("blur");
-            $(".menuBtn").css({"color": "#fff"});
-            $("#searchBar").toggle();
-            $("#header").toggleClass("noShadow");
-            $("#searchBar").toggleClass("slideDown");
-        } else {
-            $("#searchBar").toggle();
-            $("#header").toggleClass("noShadow");
-            $("#searchBar").toggleClass("slideDown");
-        }
-
-    }
-    
-    function clearMap() {
-        for(i in map._layers) {
-            if(map._layers[i]._path != undefined) {
-                try {
-                    map.removeLayer(map._layers[i]);
-                }
-                catch(e) {
-                    console.log("problem with " + e + map._layers[i]);
-                }
-            }
-        }
-    }
-
-    function sucAS(p){
-        loc.lat = p.coords.latitude;
-        loc.lon = p.coords.longitude;
-        myPosition = new L.latLng(loc.lat, loc.lon);
-        map.setView([loc.lat, loc.lon], 9)
-        var customIcon = new L.icon({
-                        iconUrl: "images/marker-icon.png",
-                        iconSize:     [34, 75], 
-                        iconAnchor:   [22, 75], 
-                        popupAnchor:  [-3, -76] 
-                    }); 
-        L.marker([loc.lat, loc.lon], {
-                        icon: customIcon,
-                        zIndexOffset: 1000
-                    }).addTo(map);
-    }
-
-    function failAS(){ 
-        //nothing
-    }
-
-
-    function refreshMarkers(){
-        var m = map.getBounds();
-        var bound = m.getNorthEast().lat+","+m.getNorthEast().lng+","+m.getSouthWest().lat+","+m.getSouthWest().lng;
-        $.getJSON('http://54.187.40.1/searchmap.php?callback=?&', {bounds:bound}, function(data){
-                if (data.code != undefined || data.code == false || data.code == "false"){
-
-                } else {
-                    $.each( data, function( key, val ) {
-                            var trueID = val.id + countID;
-                            if (typeof markers[trueID] == 'undefined'){
-
-                                var htmls = val.name + " - " + ((val.type == "4")? "Fruit Stand":"Market") + val.fruit;
-                                var standTypeIcon;
-                                if (val.type.indexOf("4") != -1 ){ 
-                                    standTypeIcon = "images/market.png";
-                                } else if (val.type.indexOf("3") != -1){
-                                    standTypeIcon = "images/stand.png";
-                                } else if (val.type.indexOf("5") != -1){
-                                    standTypeIcon = "images/strawberry_marker.png";
-                                } else {
-
-                                }
-                                var customIcon = new L.icon({
-                                    iconUrl: standTypeIcon,
-                                    iconSize:     [34, 75], 
-                                    iconAnchor:   [22, 75], 
-                                    popupAnchor:  [-3, -76] 
-                                }); 
-
-                                var position = new L.latLng(val.lat,val.lng);
-
-                                add_marker(position, {
-                                    title:val.name,
-                                    icon: customIcon
-                                }, { id:trueID, names:val.name, fruits:val.fruit, phoneNums:val.phone });
-                            }
-                    });  
-                }
-        });
-    }
-
-    function setupMap() {
-        
-        map = L.map('map', {zoomControl: false}).setView([loc.lat, loc.lon], 3);
-        //TODO Fix initial map load issue with off center map
-        L.tileLayer('http://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}.png', {
-            attribution: '&copy; FruitPath',
-            maxZoom: 18
-        }).addTo(map);
-        map.on('moveend', function(e){
-            refreshMarkers();
-        });
-        addMarkers();
-    }
-
-
-    function submitRegister(){
-        var email = $("#email").val();
-        var password = $("#password").val();
-        var name = $("#place-name").val();
-        var type = 0;
-        if ($("#fruit-at-stand").is(':checked')){
-            type = 3; 
-        }
-        if ($("#fruit-at-market").is(':checked')){
-            type =4; 
-        }
-        if ($("#fruit-at-strawberry").is(':checked')){
-            type =5; 
-        }
-        var fruits = "";
-        $.each($(".fc"),function(i,e){
-            if ($(e).is(':checked')){
-                fruits = fruits + e.id + " ";
-            }
-        });
-        var phone = $("#place-phone").val();
-        var zip = $("#place-postal").val();
-        var address = $("#place-street").val();
-        if (email == "" || password == "" || name == "" || type == 0 || fruits == "" || phone == "" || zip == "" || address == ""){
-            $("#registerMessage").text("Please fill in all fields");
-        } else {
-            $.getJSON('http://54.187.40.1/register.php?callback=?&', {email:email,password:password,name:name,type:type,fruits:fruits,phone:phone,zip:zip,address:address}, function(data){
-                console.log(data['code']);
-                if (data['code'] === "success") {
-                    $("#registerMessage").text("Welcome to FruitPath, we sent you an email to complete your activation, you must activate your vendor account before being seen on the map");
-                } else if(data['code'] === "email exists") {
-                    $("#registerMessage").text("Looks like theres a vendor with that email already");
-                } else {
-                    $("#registerMessage").text("Umm... were not really sure what happened. Please contact customer support. Please accept our sincerest apologies");
-                }
-
-            });
-        }
-    }
-    
-    function filterMarkers(tx){
-        if (tx.value.length > 0){
-            $.each(markers,function(key,val){
-                if (val.details.fruits.toLowerCase().indexOf(tx.value.toLowerCase()) !== -1 || val.details.names.toLowerCase().indexOf(tx.value.toLowerCase()) !== -1){
-                    val.addTo(map);
-                } else {
-                    map.removeLayer(val);
-                }
-            });
-        } else {
-            $.each(markers,function(key,val){
-                val.addTo(map);
-            });
-        }
-    }
-    var line;
-    var router = L.Routing.osrm();
-    
-    function add_marker(position, options, place) {
-
-        var marker = new L.marker(position, options);
-        marker.details = place;
-        var dirLatLongs = marker.getLatLng();
-        var dirLatLong = dirLatLongs.lat+","+dirLatLongs.lng;
-        
-        var contactNumber = place.phoneNums;
-        var infoWindowInsides;
-        
-        if (contactNumber == undefined || contactNumber == "" || contactNumber == null ) {
-            infoWindowInsides = "<div class='markerPopupClass grid'>"+
-                                    "<h1>"+ place.names +" </h1>"+
-                                    "<div class='col2'> <a id='fruitsAnchor' onclick='openFruitsModal();' class='el-icon-viadeo'></a> <br> Fruits </div>"+
-                                    "<div class='col2'> <a onclick='openDirectionsModal("+dirLatLong+");' class='el-icon-compass'></a> <br> Directions </div>"+
-                                "</div>";
-        } else {
-            var number = contactNumber.replace(/\./g,'');
-            infoWindowInsides = "<div class='markerPopupClass grid'>"+
-                                    "<h1>"+ place.names +" </h1>"+
-                                    "<div class='col3'> <a onclick='makePhoneCall("+number+")' class='el-icon-phone'></a> <br> Contact </div>"+
-                                    "<div class='col3'> <a id='fruitsAnchor' onclick='openFruitsModal();' class='el-icon-viadeo'></a> <br> Fruits </div>"+
-                                    "<div class='col3'> <a onclick='openDirectionsModal("+dirLatLong+");' class='el-icon-compass'></a> <br> Directions </div>"+
-                                "</div>";
-        }
-        //var paddingLeft = (deviceWidth - 200) / 2 - 10;
-        marker.bindPopup(infoWindowInsides, {maxWidth: 200, autoPanPadding: 50});
-        
-        
-        marker.on('click', function(e) {
-            fruitsArray = place.fruits.split(',');
-            var waypoints = [
-                myPosition,
-                dirLatLongs
-            ];
-            router.route(waypoints);
-            router.on('routefound', function(e) {
-                if (line) {
-                    map.removeLayer(line);
-                }
-                line = L.Routing.line(e.routes[0]);
-                line.addTo(map);   
-
-            });
-            map.fitBounds(waypoints);
-        });
-        marker.addTo(map);
-        markers.push(marker);
-    }
-
-    function addMarkers(){
-        
-            $.getJSON("map-data/public-markers.json", function(data){
-                $.each( data, function( key, val ) {
-                    var standTypeIcon;
-                    if (val.type.indexOf("market") != -1 ){ 
-                        standTypeIcon = "images/market.png";
-                    } else if (val.type.indexOf("stand") != -1){
-                        standTypeIcon = "images/stand.png";
-                    } else if (val.type.indexOf("straw") != -1){
-                        standTypeIcon = "images/strawberry_marker.png";
-                    } else {
-
-                    }
-                    var customIcon = new L.icon({
-                        iconUrl: standTypeIcon,
-                        iconSize:     [34, 75], 
-                        iconAnchor:   [22, 75], 
-                        popupAnchor:  [-3, -76] 
-                    }); 
-                    var position = new L.latLng(val.latitude,val.longitude);
-
-                    add_marker(position, {
-                        title:val.name,
-                        icon: customIcon
-                    }, { id:countID, names:val.name, fruits:val.fruit, phoneNums:val.phone });
-                    window.countID++;
-                });  
-            });  
-
-    }
-    document.addEventListener("intel.xdk.device.ready", onDeviceReady, false);
+_qevents.push({
+qacct:"p-3dqCTjpAeBZK4"
+});
 </script>
+
+<noscript>
+<div style="display:none;">
+<img src="//pixel.quantserve.com/pixel/p-3dqCTjpAeBZK4.gif" border="0" height="1" width="1" alt="Quantcast"/>
+</div>
+</noscript>
+<!-- End Quantcast tag -->
+
+
+
+<!--[if lt IE 8]>
+<style>
+/* For IE < 8 (trigger hasLayout) */
+.clearfix {
+    zoom:1;
+}
+</style>
+<![endif]-->
+
+
 </head>
+
 <body>
-    <div id="afui">
-        <div id="splashscreen">
-            <img src="images/splash.png">
-        </div>
-        <div id="content">
-            
-            <div class="panel" id="home" style="overflow:hidden"> 
-                <header>
-                    <h1></h1>
-                    <a onclick="toggleMenu();" class="button el-icon-lines menuBtn" style="float: left; "></a>
-                    <a onclick="toggleSearch();" class="button el-icon-search menuBtn" style="float: right; "></a>
-                </header>
-                <div id="searchBar">
-                    <input type="search" name="search" onfocus="this.placeholder = ''" id="searchFruit" oninput="filterMarkers(this);"  class="searchFruitInput" placeholder="Search Local Fruit" /> 
-                </div>
-                <div id="map"></div>
-            </div>
-            
-            <div id="settings" class="panel" data-nav="user-nav" style="" data-footer="none">
-                <header>
-                    <h1></h1>
-                    <a onclick="goBack();" class="button el-icon-arrow-left menuBtn" style="float: left; "></a>
-                </header>
-                <h2> Help us improve Fruit Path by submitting feedback.</h2>
-                <form data-appbuilder-object="form">
-                    <input required type="text" placeholder="Full Name">
-                    <input required type="text" placeholder="Email">
-                    <textarea placeholder="Leave feedback..."> </textarea>
-                    <input type="submit" value="Send Feedback">
-                </form>
-            </div>
 
-            <div id="about" class="panel" data-nav="user-nav" style="" data-footer="none">
-                <header>
-                    <h1></h1>
-                    <a onclick="goBack();" class="button el-icon-arrow-left menuBtn" style="float: left; "></a>
-                </header>
-                <div id="aboutHeader">
-                    <img src="images/icon.png" class="aboutLogoImage">
-                    <h1>Fruit Path</h1>
-                    <h2>Your path to fruit</h2>
-                </div>
-                <div id="aboutContent">
-                    <h1>About</h1>
-                    <p> Fruit Path is a map of local farmer's markets, fruit stands and strawberry stands. Using our map is the easiest way to get directions to the nearest fresh and seasonal fruit.  </p>
-                </div>
-            </div>
+	<!-- Preloader -->
+	<div id="loader">
+	  <div id="loaderInner"></div>
+	</div>
 
-            <div id="feedback" class="panel" data-nav="user-nav" style="" data-footer="none">
-                <header>
-                    <h1></h1>
-                    <a onclick="goBack();" class="button el-icon-arrow-left menuBtn" style="float: left; "></a>
-                </header>
-                <h2> Help us improve Fruit Path by submitting feedback.</h2>
-                <form data-appbuilder-object="form">
-                    <input required type="text" placeholder="Email">
-                    <input required type="text" placeholder="Subject">
-                    <textarea required type="text" placeholder="Leave feedback..."> </textarea>
-                    <input type="submit" value="Send Feedback">
-                </form>
-            </div>
-            <div id="becomeVendor" class="panel" data-nav="user-nav" data-footer="none">
-                <header>
-                    <h1></h1>
-                    <a onclick="goBack();" class="button el-icon-arrow-left menuBtn" style="float: left; "></a>
-                </header>
-                <form id="submitVendor">
-                    <h1>Selling Fruit?</h1>
-                    <br>
-                    <h3>Fill out our form to become an official vendor on FruitPath</h3>
-                    <div class="form-section">
-                        <h2>Where is your fruit sold?</h2>
-                        <input id="fruit-at-stand" type="radio" name="test" value="2"><label for="fruit-at-stand">Fruit Stand</label>
-                        <input id="fruit-at-market" type="radio" name="test" value="4"><label for="fruit-at-market">Strawberry Stand </label>
-                        <input id="fruit-at-strawberry" type="radio" name="test" value="5"><label for="fruit-at-strawberry">Market </label>
-                        
-                        <br style="clear:both">
-                    </div>
-                    <div class="form-section">
-                        <h2> What fruit do you sell?</h2>
-                        <input id="Peach" class="fc" type="checkbox" name="peach" value="1"><label for="Peach">Peach</label>
-                        <input id="Grapes" class="fc" type="checkbox" name="grapes" value="2"><label for="Grapes">Grapes</label>
-                        <input id="Nectorine" class="fc" type="checkbox" name="nectorine" value="3"><label for="Nectorine">Nectorine</label>
-                        <input id="Cherry" class="fc" type="checkbox" name="cherry" value="4"><label for="Cherry">Cherry</label>
-                        <input id="Watermelon" class="fc" type="checkbox" name="watermelon" value="5"><label for="Watermelon">Watermelon</label>
-                        <input id="Strawberry" class="fc" type="checkbox" name="strawberry" value="6"><label for="Strawberry">Strawberry</label>
-                        <input id="Orange" class="fc" type="checkbox" name="orange" value="7"><label for="Orange">Orange</label>
-                        <input id="White-Peach" class="fc" type="checkbox" name="whitepeach" value="8"><label for="White-Peach">White Peach</label>
-                        <input id="Blackberry" class="fc" type="checkbox" name="blackberry" value="9"><label for="Blackberry">Blackberry</label>
-                        
-                        <br style="clear:both">
-                    
-                        <br style="clear:both">
-                    </div>
-                    <div class="form-section">
-                        <input id="email" type="email" placeholder="Email">
-                        <input id="password" type="password" placeholder="Password">
-                        <input id="place-name" type="text" placeholder="Fruit Stand Name" required>
-                        <input id="place-phone" type="tel" placeholder="Phone Number" required>
-                        <input id="place-street" type="text" placeholder="Street Adress" required>
-                        <input id="place-postal" type="text" placeholder="Zip Code" class="half-width" required>
-                        <br style="clear:both">
-                        
-                    </div>
-                    <h2 id="registerMessage"></h2>
-                    <input type="submit" class="signup-vendor">
-                </form>
-
-            </div>
+<!--Wrapper-->
+<div id="wrapper">
 
 
-            <div class="panel " id="directionsModal" data-modal="true" data-header="none">
-                <div class="direction-controls grid">
-                    <div class='col2'> <a onclick='hideModals();' class='el-icon-remove'></a> <br> Close </div>
-                    <div class='col2'> <a onclick='openNativeMap();' class='el-icon-car'></a> <br> Navigate </div>
-                </div>
-                <div id="myDirDiv">
-                    <h2 id="dirErrorMsg">Gathering directiong...</h3>
-                </div>
-            </div>
-            
-            <div class="panel " id="vendorsFruits" data-modal="true" data-header="none">
-                <div class="direction-controls grid">
-                    <div class='col1'> <a onclick='hideModals();' class='el-icon-remove'></a> <br> Close </div>
-                </div>
-                
-                <ul id="fruit-list">
-                </ul>
-            </div>
-                
-            <div class="panel " id="dropDownMenu" data-modal="true" data-header="none">
-                <ul class="list">
-                    <li><span class="el-icon-user"> </span> <a data-transition="none" href="#becomeVendor" onclick="toggleMenu();"> Vendor Signup</a> 
-                    </li>
-                    <li><span class="el-icon-leaf"> </span> <a data-transition="none" href="#about" onclick="toggleMenu();"> About Us</a> 
-                    </li>
-                    <li><span class="el-icon-thumbs-up"> </span> <a data-transition="none" href="#feedback" onclick="toggleMenu();"> App Feedback</a> 
-                    </li>
-                </ul>
-            </div>
-        </div>
-    
-    </div> 
+	<!--Header-->
+	<header id="header">
+		
+		<!--Main header-->
+			<div class="mainHeader">
+				
+				
+				<!--Container-->
+			<div class="container clearfix">
+			<div class="one-third column">
+				<!--Logo-->
+				<div class="logo">
+				<a href="#wrapper"><img src="websiteimages/fruitpathlogo.png" alt=""/>
+				</div>
+				<!--End logo-->
+			</div>
+			
+			
+				<div class="two-thirds column">
+						<!--Navigation-->
+							<nav id="mainNav" >
+								<a href="#" class="mobileBtn" ><i class="icon-menu"></i></a>
+
+							<ul>
+								<li><a href="http://fruitpath.com">Home</a></li>
+                                                                <li><a href="http://fruitpath.com/app/index.html">Web Version</a></li>
+								<li><a href="#gallery">Our Map Markers</a></li>
+								<li><a href="#subscribe">Subscribe</a></li>
+                                                                <li><a href="#support">App Support</a></li>
+								
+
+							</ul>
+
+							</nav>
+						<!--End navigation-->
+	
+				</div>
+			<!--End container-->
+			
+			
+		
+ 
+			</div>
+		<!--End main header-->
+			</div>
+	</header>
+	<!--End header-->
+	
+	
+	
+
+		
+		<!--Main slider-->
+		<div class="splash">
+			
+			
+			
+			
+				<!--Overlay-->
+				<div class="overlay">
+
+		
+				<div class="caption">
+					<h1>Find local fruit stands and farmer's markets with<br> 
+					<span class="black">Fruit Path</span> all year long</h1>
+					
+				</div>
+				
+					</div>
+					<!--End overlay-->
+	
+		</div>
+		<!--End main slider-->
+
+	
+	
+		<!--Overview-->
+		<section id="overview" class="offset section bBottom">
+			
+			
+			
+			<!--Overview slider-->
+			<div class="overviewSlider flexslider ">
+				<ul class="slides ">
+
+					<li><img src="websiteimages/sliderImages/appSlider1.png" alt=""/></li>
+					<li><img src="websiteimages/sliderImages/appSlider2.png" alt=""/></li>
+				</ul>
+				
+			</div>
+			<!--End overview slider-->
+			
+			
+			<!--Container-->
+			<div class="container clearfix test">
+			
+			<div class="sixteen columns">
+			<p class="overviewIntro"><span class="black">Fruit Path</span> makes it easy to find fruit with our map. Use it to find fruit stands and farmer's markets with ease.</p>
+			</div>
+				
+				
+				<div class="sixteen columns ctl ">
+				<div class="platform download ">
+<a href="https://itunes.apple.com/au/app/fruit-path/id868467686?mt=8&ign-mpt=uo%3D2" class="myButton">Download Fruit Path</a>
+
+					
+				
+  				</div>
+				</div>
+					
+
+				
+			</div>
+			<!--End container-->
+			
+		</section>	
+		<!--End  overview-->
+		
+		
+
+
+									</section>
+									<!--End testimonials and client section-->
+									
+									
+									
+										<!--Gallery section-->
+										<section id="gallery" class="offset section">
+
+
+												
+													<!--Container-->
+													<div class="container clearfix">
+
+
+														<div class="sixteen columns">
+														<h1 class="titleBig">Our Map Markers!</h1>
+														</div>
+														
+														
+														</div>
+														<!--End container-->
+														
+														
+													
+													<!--Container-->
+													<div class="container clearfix">
+													
+													<!--Gallery slider-->
+													<div class="gallSlider">
+														
+														<ul id="owl-slider" class="owl-carousel">
+
+												<li><a href="websiteimages/galleryImages/sh1.jpg" class="gall"><img src="websiteimages/galleryImages/sh1.jpg" alt=""/></a>Farmer's Market</li>
+												<li><a href="websiteimages/galleryImages/sh2.jpg" class="gall"><img src="websiteimages/galleryImages/sh2.jpg" alt=""/></a>Fruit Stand</li>
+												<li><a href="websiteimages/galleryImages/sh3.jpg" class="gall"><img src="websiteimages/galleryImages/sh3.jpg" alt=""/></a>Strawberry Stand</li>
+												<li>
+															
+														</ul>
+
+													</div>
+													<!--End gallery slider-->
+															
+															
+														</div>
+														<!--End container-->
+
+
+
+								</section>
+								<!--End gallery section-->
+								
+								
+								
+								
+									
+												
+												<!--Subscribe-->
+													<section id="subscribe" class="subscribe  offset ">
+													
+													
+													<!--Container-->
+													<div class="container clearfix">
+														
+														
+													<!--Newsletter-->	
+													<div  class="subscribeHolder section ">	
+														
+													<div class="sixteen columns">
+														<h1>subscribe to our newsletter list</h1>
+														<p>Join our mailing list and stay informed about our news and updates.</p>
+													</div>
+													
+													
+													
+													<div class="sixteen columns subscribeForm">
+														
+													<form novalidate="novalidate" method="post" action="http://eepurl.com/R1h-f" target="_blank">
+														<input type="email" name="email" placeholder="Enter your email here..." class="required email">
+														<div id="btnSubmit">
+														<input type="submit" name="submit" id="send" value="Subscribe">
+														</div>
+													</form>	
+												</div>
+												
+												
+												
+													<div class="sixteen columns bSocials">
+														
+															<div class="sixteen columns">
+																<h1>stay social with us</h1>
+															
+														
+														
+															<ul>
+																<li><a href="https://www.facebook.com/fruitpath"><i class="icon-facebook"></i></a></li>
+																															<li><a href="#"><i class="icon-twitter"></i></a></li>
+																														<li><a href="#"><i class="icon-pinterest"></i></a></li>
+																<li><a href="#"><i class="icon-instagram"></i></a></li>
+																
+															</ul>
+															
+															
+															</div>
+													</div>
+												
+												
+															
+														</div>
+													<!--End newsletter-->	
+
+														</div>
+														<!--End container-->
+
+												
+												</section>
+												<!--End subscribe-->
+												
+												
+												<!--Footer-->
+												<footer class="footer">
+
+														<!--Container-->
+														<div class="container clearfix">
+
+															<div class="sixteen columns">
+
+																<p>© 2014 <span class="black">Fruit Path</span> All Rights Reserved. For app support contact <span id="support" class="black">aaron@reedleystartup.com</span>.</p>
+															</div>	
+
+												</div>
+													<!--End container-->
+											</footer>
+
+								<!--End footer-->
+
+			
+			
+			
+										
+				
+								
+</div>
+<!--End wrapper-->
+
+	
+<!--Javascript-->
+<script src="websitejs/jquery-1.9.1.min.js" type="text/javascript"></script>
+<script src="websitejs/jquery-migrate-1.2.1.js"></script>
+<script src="websitejs/jquery.flexslider-min.js" type="text/javascript"></script>
+<script src="websitejs/jquery.easing.1.3.js" type="text/javascript"></script>
+<script src="websitejs/jquery.scrollTo-min.js" type="text/javascript"></script>
+<script src="websitejs/waypoints.js" type="text/javascript"></script>
+<script src="websitejs/jquery.parallax-1.1.3.js"></script>
+<script src="websitejs/modernizr.custom.js"></script>
+<script src="websitejs/jquery.validate.js" type="text/javascript"></script>
+<script src="websitejs/jquery.ui.totop.min.js" type="text/javascript"></script>
+<script src="websitejs/owl.carousel.min.js" type="text/javascript"></script>
+<script src="websitejs/Placeholders.min.js" type="text/javascript"></script>
+<script src="websitejs/jquery.magnific-popup.js" type="text/javascript"></script>
+<script src="websitejs/script.js" type="text/javascript"></script>
+
+
+<!-- Google analytics -->
+
+
+<!-- End google analytics -->
+
+
 </body>
 </html>
